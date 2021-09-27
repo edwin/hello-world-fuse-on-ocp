@@ -18,3 +18,8 @@ Blog Post
 ```
 https://edwin.baculsoft.com/2021/08/deploying-fuse-7-on-top-of-spring-boot-to-openshift-4/
 ```
+
+
+Actuator and Prometheus
+------------------
+Above monitoring tools are published at a different port compared to application's. Port 8080 for Apps, and 9090 for monitoring.
