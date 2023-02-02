@@ -1,0 +1,71 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: $APP_NAME
+  namespace: $NAMESPACE
+spec:
+  type: LoadBalancer
+  selector:
+    app: $APP_NAME
+  ports:
+    - protocol: TCP
+      port: 8080
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $APP_NAME
+  namespace: $NAMESPACE
+  labels:
+    app: $APP_NAME
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 25%
+  minReadySeconds: 5
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: $APP_NAME
+  template:
+    metadata:
+      labels:
+        app: $APP_NAME
+    spec:
+      containers:
+        - name: $APP_NAME
+          image: $REGISTRY/$REGISTRY_NAMESPACE/$APP_NAME:$BUILD_NUMBER
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "2"
+              memory: "2000Mi"
+            requests:
+              cpu: "0.5"
+              memory: "500Mi"
+---
+
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: $APP_NAME
+  namespace: $NAMESPACE
+spec:
+  maxReplicas: 5
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: $APP_NAME
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: 85

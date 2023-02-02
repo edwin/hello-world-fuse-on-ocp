@@ -1,0 +1,38 @@
+node('maven') {
+	def appName="helloworldfuseonocp"
+	def projectName="sampleapp"
+	def imageRegistry="image-registry.openshift-image-registry.svc:5000"
+
+	def gitRepo="https://github.com/edwin/hello-world-fuse-on-ocp.git"
+
+    stage('Clone') {
+        sh "git config --global http.sslVerify false"
+        sh "git clone ${gitRepo} source "
+    }
+    stage('Build') {
+        sh "mvn -v"
+        dir("source") {
+            sh "git fetch"
+            sh "mvn clean package -Dmaven.test.skip=true -s settings.xml -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true"
+            sh "mkdir -p build/target"
+            sh "cp target/*.jar build/target"
+            sh "cp Dockerfile build/"
+            sh "cat build/Dockerfile | oc new-build -D - --name ${appName} || true"
+            sh "oc start-build ${appName} --from-dir=build/ --follow --wait"
+        }
+    }
+    stage('Deploy') {
+        dir("source") {
+			def tag = sh(returnStdout: true, script: "git rev-parse --short=8 HEAD").trim();
+            def tokenLocal=sh(script: 'oc whoami -t', returnStdout: true).trim();
+            withCredentials([usernamePassword(credentialsId: 'gitlab', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+            sh """
+               sed 's,\\\$REGISTRY/\\\$REGISTRY_NAMESPACE/\\\$APP_NAME:\\\$BUILD_NUMBER,${imageRegistry}/${projectName}/${appName}:${tag},g' cicd/k8s/kubernetes_dev.yaml > kubernetes-dev_ocp.yaml
+               """
+            sh "sed -i 's/\$APP_NAME/${appName}/g' kubernetes-dev_ocp.yaml"
+            sh "sed -i 's/\$NAMESPACE/${projectName}/g' kubernetes-dev_ocp.yaml"
+
+            sh "oc apply -f kubernetes-dev_ocp.yaml -n ${projectName}"
+        }
+    }
+}

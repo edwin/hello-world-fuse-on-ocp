@@ -1,0 +1,36 @@
+node('maven') {
+
+	def appName="helloworldfuseonocp"
+	def projectName="sampleapp"
+    def imageRegistry="image-registry.openshift-image-registry.svc:5000"
+
+    def gitRepo="https://github.com/edwin/hello-world-fuse-on-ocp.git"
+
+    stage ('app confirmation') {
+        input message: "Promote FROM DEV to UAT?"
+    }
+        stage ('copy the app image to UAT') {
+        parallel (
+              UAT: {
+                    echo "Promoting ${projectName}/${appName}:${tag} -> ${projectName}-uat/${appName}:${tag}"
+                    sh "git clone ${gitRepo} source "
+
+                    sh """
+                    set +x
+                    oc tag ${projectName}/${appName}:${tag} ${projectName}-uat/${appName}:${tag}
+                    """
+
+                    dir("source") {
+                        sh """
+                            sed 's,\\\$REGISTRY/\\\$REGISTRY_NAMESPACE/\\\$APP_NAME:\\\$BUILD_NUMBER,${imageRegistry}/${projectName}-uat/${appName}:${tag},g' cicd/k8s/kubernetes_uat.yaml > kubernetes-uat_ocp.yaml
+                            """
+
+                        sh "sed -i 's/\$APP_NAME/${appName}/g' kubernetes-uat_ocp.yaml"
+                        sh "sed -i 's/\$NAMESPACE/${projectName}-uat/g' kubernetes-uat_ocp.yaml"
+
+                        sh "oc apply -f kubernetes-uat_ocp.yaml -n ${projectName}-uat"
+                    }
+              }
+        )
+    }
+}
