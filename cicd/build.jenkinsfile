@@ -25,7 +25,6 @@ node('maven') {
         dir("source") {
 			def tag = sh(returnStdout: true, script: "git rev-parse --short=8 HEAD").trim();
             def tokenLocal=sh(script: 'oc whoami -t', returnStdout: true).trim();
-            withCredentials([usernamePassword(credentialsId: 'gitlab', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
             sh """
                sed 's,\\\$REGISTRY/\\\$REGISTRY_NAMESPACE/\\\$APP_NAME:\\\$BUILD_NUMBER,${imageRegistry}/${projectName}/${appName}:${tag},g' cicd/k8s/kubernetes_dev.yaml > kubernetes-dev_ocp.yaml
                """
