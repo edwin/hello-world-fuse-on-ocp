@@ -45,8 +45,7 @@ spec:
           imagePullPolicy: Always
           resources:
             limits:
-              cpu: "1"
-              memory: "1000Mi"
+              memory: "500Mi"
             requests:
               cpu: "0.5"
               memory: "500Mi"
@@ -58,7 +57,7 @@ metadata:
   name: $APP_NAME
   namespace: $NAMESPACE
 spec:
-  maxReplicas: 3
+  maxReplicas: 2
   minReplicas: 1
   scaleTargetRef:
     apiVersion: apps/v1
